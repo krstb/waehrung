@@ -24,7 +24,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    html {background-color: #000000 !important;overscroll-behavior-y: none;}
+ 
+        /* Fix für PWA-Ränder und den blauen Balken */
+        html {background-color: #000000 !important;
+              overscroll-behavior-y: none;
+        }
+        
     body { font-family: 'Inter', sans-serif; background-color: #D2FF00; }
     .shadow-3xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
     /* Versteckt den Standard-Pfeil bei datalist in manchen Browsern */
