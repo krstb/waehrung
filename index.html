@@ -24,16 +24,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
- 
-        /* Fix für PWA-Ränder und den blauen Balken */
-        html {background-color: #000000 !important;
-              overscroll-behavior-y: none;
-        }
-        
-    body { font-family: 'Inter', sans-serif; background-color: #D2FF00; }
-    .shadow-3xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    /* Fix für PWA-Ränder und den blauen Balken */
+    html {
+      background-color: #000000 !important;
+      overscroll-behavior-y: none;
+    }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #D2FF00; 
+    }
+    .shadow-3xl { 
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
+    }
     /* Versteckt den Standard-Pfeil bei datalist in manchen Browsern */
-    input::-webkit-calendar-picker-indicator { opacity: 0; }
+    input::-webkit-calendar-picker-indicator { 
+      opacity: 0; 
+    }
   </style>
 </head>
 <body class="flex items-start justify-center min-h-screen p-4 pt-4">
@@ -42,8 +48,8 @@
     
     <div class="mb-6">
       <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Betrag</label>
-      <input type="text" id="amount" inputmode="decimal" placeholder="Geben Sie den Betrag ein"
-       class="mt-1 block w-full px-4 py-3 border-2 border-gray-300 rounded-xl shadow-inner placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      <input type="text" id="amount" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Geben Sie den Betrag ein"
+             class="mt-1 block w-full px-4 py-3 border-2 border-gray-300 rounded-xl shadow-inner placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
     </div>
 
     <div class="flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0 md:space-x-4 mb-8">
@@ -98,23 +104,49 @@
     }
 
     function formatNumber(number) {
-        return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
+      return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
     }
 
+    // Konvertiert Punkte in Kommas beim Tippen (Verhalten analog zur Sprit-App)
     function handleInput(e) {
       let cursorPosition = e.target.selectionStart;
       let originalValue = e.target.value;
-      let cleanValue = originalValue.replace(/[^0-9,]/g, '');
+
+      // 1. Punkte in Kommas umwandeln
+      let normalizedValue = originalValue.replace(/\./g, ',');
+
+      // 2. Nur Ziffern und Kommas zulassen
+      let cleanValue = normalizedValue.replace(/[^0-9,]/g, '');
+
+      // 3. Nur ein Komma erlauben
       const parts = cleanValue.split(',');
-      if (parts.length > 2) cleanValue = parts[0] + ',' + parts.slice(1).join('');
-      let [integerPart, decimalPart] = cleanValue.split(',');
-      if (integerPart) { integerPart = parseInt(integerPart).toLocaleString('de-DE'); }
-      let newValue = integerPart !== undefined ? integerPart : '';
-      if (cleanValue.includes(',')) newValue += ',' + (decimalPart || '');
-      e.target.value = newValue;
-      if (originalValue !== newValue) { cursorPosition = cursorPosition + (newValue.length - originalValue.length); }
-      e.target.setSelectionRange(cursorPosition, cursorPosition);
+      if (parts.length > 2) {
+        cleanValue = parts[0] + ',' + parts.slice(1).join('');
+      }
+
+      e.target.value = cleanValue;
+
+      // 4. Cursor-Position anpassen
+      if (originalValue !== cleanValue) {
+        cursorPosition = cursorPosition + (cleanValue.length - originalValue.length);
+      }
+
+      try {
+        e.target.setSelectionRange(cursorPosition, cursorPosition);
+      } catch (err) {
+        // Ignorieren
+      }
+
       debouncedConvert();
+    }
+
+    // Formatiert das Eingabefeld sauber mit 1000er-Punkten, wenn der Fokus verloren geht (blur)
+    function formatOnBlur(e) {
+      const rawValue = e.target.value.replace(/\./g, '').replace(',', '.');
+      const amount = parseFloat(rawValue);
+      if (!isNaN(amount) && amount > 0) {
+        e.target.value = formatNumber(amount);
+      }
     }
 
     async function populateCurrencyDropdowns() {
@@ -146,7 +178,6 @@
       const rawValue = amountInput.value.replace(/\./g, '').replace(',', '.');
       const amount = parseFloat(rawValue);
       
-      // Extrahiere nur den ISO-Code (z.B. "USD") aus dem Suchfeld
       const fromCurrency = fromInput.value.split(' - ')[0];
       const toCurrency = toInput.value.split(' - ')[0];
       
@@ -166,7 +197,9 @@
         const data = await response.json();
         if (data.result === 'success' && data.rates[toCurrency]) {
           const convertedAmount = amount * data.rates[toCurrency];
-          resultDiv.innerHTML = `${amountInput.value} ${fromCurrency}<br>=<br>${formatNumber(convertedAmount)} ${toCurrency}`;
+          
+          // WICHTIG: Auch den Ausgangsbetrag für die obere Zeile der Ausgabe formatieren
+          resultDiv.innerHTML = `${formatNumber(amount)} ${fromCurrency}<br>=<br>${formatNumber(convertedAmount)} ${toCurrency}`;
         }
       } catch (error) {
         resultDiv.textContent = 'Fehler beim Abrufen der Kurse.';
@@ -177,20 +210,22 @@
     const debouncedConvert = debounce(convertCurrency, 500);
 
     window.onload = () => {
-        populateCurrencyDropdowns().then(() => {
-            const last = localStorage.getItem('lastAmount');
-            if (last) { amountInput.value = last; }
-            convertCurrency(); 
-        });
-        amountInput.addEventListener('input', handleInput);
-        fromInput.addEventListener('change', convertCurrency);
-        toInput.addEventListener('change', convertCurrency);
-        swapBtn.addEventListener('click', () => {
-            const temp = fromInput.value;
-            fromInput.value = toInput.value;
-            toInput.value = temp;
-            convertCurrency();
-        });
+      populateCurrencyDropdowns().then(() => {
+        const last = localStorage.getItem('lastAmount');
+        if (last) { amountInput.value = last; }
+        convertCurrency(); 
+      });
+
+      amountInput.addEventListener('input', handleInput);
+      amountInput.addEventListener('blur', formatOnBlur);
+      fromInput.addEventListener('change', convertCurrency);
+      toInput.addEventListener('change', convertCurrency);
+      swapBtn.addEventListener('click', () => {
+        const temp = fromInput.value;
+        fromInput.value = toInput.value;
+        toInput.value = temp;
+        convertCurrency();
+      });
     };
   </script>
 </body>
