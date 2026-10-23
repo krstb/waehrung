@@ -107,7 +107,7 @@
       return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
     }
 
-    // Konvertiert Punkte in Kommas beim Tippen (Verhalten analog zur Sprit-App)
+    // Wandelt getippte Punkte sofort in ein Komma um, lässt den Wert während der Eingabe sonst unformatiert
     function handleInput(e) {
       let cursorPosition = e.target.selectionStart;
       let originalValue = e.target.value;
@@ -118,7 +118,7 @@
       // 2. Nur Ziffern und Kommas zulassen
       let cleanValue = normalizedValue.replace(/[^0-9,]/g, '');
 
-      // 3. Nur ein Komma erlauben
+      // 3. Nur maximal ein Komma erlauben
       const parts = cleanValue.split(',');
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
@@ -140,12 +140,20 @@
       debouncedConvert();
     }
 
-    // Formatiert das Eingabefeld sauber mit 1000er-Punkten, wenn der Fokus verloren geht (blur)
+    // Formatiert das Eingabefeld erst nach der Eingabe (wenn das Feld verlassen wird)
     function formatOnBlur(e) {
       const rawValue = e.target.value.replace(/\./g, '').replace(',', '.');
       const amount = parseFloat(rawValue);
       if (!isNaN(amount) && amount > 0) {
         e.target.value = formatNumber(amount);
+      }
+    }
+
+    // Entfernt die Tausenderpunkte beim Wieder-Anklicken für einfache Korrekturen
+    function handleFocus(e) {
+      const rawValue = e.target.value.replace(/\./g, '');
+      if (rawValue) {
+        e.target.value = rawValue;
       }
     }
 
@@ -198,7 +206,6 @@
         if (data.result === 'success' && data.rates[toCurrency]) {
           const convertedAmount = amount * data.rates[toCurrency];
           
-          // WICHTIG: Auch den Ausgangsbetrag für die obere Zeile der Ausgabe formatieren
           resultDiv.innerHTML = `${formatNumber(amount)} ${fromCurrency}<br>=<br>${formatNumber(convertedAmount)} ${toCurrency}`;
         }
       } catch (error) {
@@ -218,6 +225,7 @@
 
       amountInput.addEventListener('input', handleInput);
       amountInput.addEventListener('blur', formatOnBlur);
+      amountInput.addEventListener('focus', handleFocus);
       fromInput.addEventListener('change', convertCurrency);
       toInput.addEventListener('change', convertCurrency);
       swapBtn.addEventListener('click', () => {
