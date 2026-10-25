@@ -216,10 +216,13 @@
 
     const debouncedConvert = debounce(convertCurrency, 500);
 
-    window.onload = () => {
+        window.onload = () => {
       populateCurrencyDropdowns().then(() => {
         const last = localStorage.getItem('lastAmount');
-        if (last) { amountInput.value = last; }
+        if (last) { 
+          amountInput.value = last; 
+          formatOnBlur({ target: amountInput }); // <--- Hinzugefügt: Formatiert den Betrag direkt beim Start
+        }
         convertCurrency(); 
       });
 
@@ -235,6 +238,7 @@
         convertCurrency();
       });
     };
+
   </script>
 </body>
 </html>
