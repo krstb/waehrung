@@ -219,11 +219,10 @@
         window.onload = () => {
       populateCurrencyDropdowns().then(() => {
         const last = localStorage.getItem('lastAmount');
-        if (last) { 
-          amountInput.value = last; 
-          formatOnBlur({ target: amountInput }); // <--- Hinzugefügt: Formatiert den Betrag direkt beim Start
-        }
-        convertCurrency(); 
+        amountInput.value = last || '100'; // Lädt den gespeicherten Wert oder standardmäßig 100
+        formatOnBlur({ target: amountInput }); // Formatiert es direkt zu 100,00
+        convertCurrency();
+        
       });
 
       amountInput.addEventListener('input', handleInput);
